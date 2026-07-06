@@ -1,0 +1,8 @@
+google-adk
+mcp
+streamlit
+pypdf
+reportlab
+pandas
+plotly
+python-dotenv

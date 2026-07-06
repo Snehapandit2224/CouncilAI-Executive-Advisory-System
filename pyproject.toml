@@ -1,0 +1,19 @@
+[project]
+name = "councilai"
+version = "0.1.0"
+description = "Explainable Multi-Agent Business Decision Intelligence System"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "google-adk",
+    "mcp",
+    "streamlit",
+    "pypdf",
+    "reportlab",
+    "pandas",
+    "plotly",
+    "python-dotenv"
+]
+
+[tool.uv]
+dev-dependencies = []
