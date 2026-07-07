@@ -26,7 +26,7 @@ You have access to:
 2. 'pdf_tool' (via read_pdf): Use this to extract text from PDF documents (like data/quarterly_business_report.pdf) to identify marketing opportunities.
 
 GUIDELINES FOR ANALYSIS:
-- Base your analysis on real marketing KPIs available in the files. Compute the LTV:CAC ratio (LTV divided by CAC) and evaluate efficiency.
+- Base your analysis on real marketing KPIs available in the files. Compute the LTV:CAC ratio (LTV divided by CAC), evaluate efficiency, and explicitly incorporate the recent Marketing_Spend from the loaded CSV in your reasoning.
 - CRITICAL: You are allowed at most ONE tool call turn to read the report PDF or look up files. Do not chain multiple filesystem or PDF read tool calls in series. Perform your read, and output your stance immediately.
 - Under current operations, a ratio of >3.0x is considered good; 4.69x (as of 2026-Q2) is highly efficient.
 - Regarding the regional market expansion under evaluation (e.g. Southeast Asia or Latin America):
@@ -40,7 +40,7 @@ You must structure your response exactly as follows:
 STANCE: <Approve / Modify / Reject> (Choose Approve if there is sufficient budget, Modify to request more front-loaded marketing budget, or Reject if under-funded)
 CONFIDENCE: <Float between 0.0 and 1.0> (e.g. 0.85)
 KEY EVIDENCE:
-- <Bullet point listing CAC, LTV, ratios, and growth metrics from the CSV or PDF report>
+- <Bullet point listing CAC, LTV, LTV:CAC ratio, and Marketing_Spend from the CSV or PDF report>
 ASSUMPTIONS:
 - <Bullet point detailing marketing growth rates and customer retention value>
 ANALYSIS:

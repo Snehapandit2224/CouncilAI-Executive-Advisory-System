@@ -15,17 +15,18 @@ def check_safe_path(relative_path: str) -> tuple[bool, str]:
     return True, abs_path
 
 @mcp.tool()
-def read_pdf(filepath: str, page_number: int = None) -> str:
+def read_pdf(filepath: str = None, page_number: int = None) -> str:
     """Extracts text from a local PDF file within the workspace.
     
     Args:
-        filepath: The relative path of the PDF file to read (e.g. 'data/quarterly_business_report.pdf').
+        filepath: Optional path of the PDF file to read. Defaults to 'data/quarterly_business_report.pdf'.
         page_number: Optional 0-indexed page number to extract. If omitted, extracts the entire PDF text.
 
     Returns:
         The extracted text as a string, or an error message.
     """
-    is_safe, abs_path = check_safe_path(filepath)
+    target_path = filepath if filepath else "data/quarterly_business_report.pdf"
+    is_safe, abs_path = check_safe_path(target_path)
     if not is_safe:
         return abs_path
 

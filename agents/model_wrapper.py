@@ -31,27 +31,7 @@ class RetryingGemini(Gemini):
                 return  # Success, exit the generator
             except Exception as e:
                 error_str = str(e).lower()
-                is_daily_limit = (
-                    "daily" in error_str or
-                    "per day" in error_str or
-                    "day" in error_str or
-                    "generate_content_free_tier_requests" in error_str or
-                    ("quota" in error_str and "minute" not in error_str)
-                )
-                
-                if is_daily_limit:
-                    log_event(
-                        event_type="MODEL_ERROR",
-                        actor="system",
-                        action="quota_exceeded",
-                        status="FAILED",
-                        details={"model": self.model, "error": str(e)}
-                    )
-                    raise Exception(
-                        f"Gemini API Quota Exceeded. You have hit the daily request limit for your free-tier API key. "
-                        f"Please try again tomorrow, or enable 'Dry Run Mode' in the sidebar configuration to run the simulation instantly. "
-                        f"(Details: {str(e)})"
-                    )
+                is_daily_limit = "daily" in error_str or "per day" in error_str or "day" in error_str
                 
                 is_retryable = (
                     ("429" in error_str or
@@ -60,6 +40,7 @@ class RetryingGemini(Gemini):
                      "resource exhausted" in error_str or
                      "unavailable" in error_str or
                      "experiencing high demand" in error_str)
+                    and not is_daily_limit
                 )
                 
                 if is_retryable and attempt < max_retries:

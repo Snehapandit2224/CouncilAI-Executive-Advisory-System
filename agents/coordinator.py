@@ -167,25 +167,28 @@ class SecurityAuditPlugin(BasePlugin):
         if dry_run:
             agent_name = callback_context.agent_name
             sea_cost = callback_context.state.get("sea_cost", 450000)
+            region = callback_context.state.get("active_region", "Southeast Asia")
             
-            # Read CSV path from state or calculate thresholds dynamically
+            # Read CSV path from state or calculate thresholds dynamically using deterministic cost tiers
             csv_path = callback_context.state.get("kpis_csv_path", "data/quarterly_kpis.csv")
             try:
                 import pandas as pd
                 df_active = pd.read_csv(csv_path)
-                ttm_rev = df_active["Revenue"].sum()
-                ttm_exp = df_active["Expenses"].sum()
-                danger_raw = ttm_rev * 0.75 - ttm_exp
-                danger_thresh = round(danger_raw / 50000) * 50000
-                risk_thresh = round((danger_thresh * 0.8) / 50000) * 50000
-                roi_thresh = round((danger_thresh * 0.55) / 50000) * 50000
+                ltm_revenue = df_active["Revenue"].sum()
+                ltm_expenses = df_active["Expenses"].sum()
+                last_row = df_active.iloc[-1]
+                quarterly_operating_profit = last_row["Revenue"] - last_row["Expenses"]
+                
+                approve_ceiling, phased_ceiling, reject_floor = get_cost_tiers(
+                    ltm_revenue, ltm_expenses, quarterly_operating_profit
+                )
             except Exception:
-                danger_thresh = 600000
-                risk_thresh = 500000
-                roi_thresh = 350000
+                approve_ceiling = 507000.0
+                phased_ceiling = 700000.0
+                reject_floor = 855000.0
 
-            fin_stance = "Approve" if sea_cost <= roi_thresh else ("Reject" if sea_cost > danger_thresh else "Modify")
-            risk_stance = "Modify" if sea_cost > risk_thresh else "Approve"
+            fin_stance = "Approve" if sea_cost <= approve_ceiling else ("Reject" if sea_cost > reject_floor else "Modify")
+            risk_stance = "Modify" if sea_cost > phased_ceiling else "Approve"
             
             mock_text = ""
             if agent_name == "finance_agent":
@@ -245,7 +248,7 @@ This is a dry-run mock response. Suggests a phased entry strategy to mitigate li
 - [Dry Run] Consensus achieved on market potential, but Finance and Risk advise parameter adjustments.
 
 ## 4. Core Assumptions & Simulated Parameters
-- Southeast Asia entry cost: ${sea_cost:,}
+- {region} entry cost: ${sea_cost:,}
 
 ## 5. Risk Assessment & Mitigations
 - Recommends a phased launch to limit initial capital downside exposure.

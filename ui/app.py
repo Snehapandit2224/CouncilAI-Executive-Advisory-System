@@ -92,7 +92,6 @@ st.markdown("""
     .agent-title-finance { color: #10B981; }
     .agent-title-marketing { color: #3B82F6; }
     .agent-title-risk { color: #F59E0B; }
-</style>
 """, unsafe_allow_html=True)
 
 # Ensure project root is in the Python path
@@ -105,11 +104,10 @@ from security.audit_log import read_audit_log, log_event
 from security.input_guard import validate_input, validate_relevance_to_pdf
 
 def escape_latex_dollar(text: str) -> str:
-    """Escapes literal $ characters so Streamlit doesn't interpret them as LaTeX delimiters."""
+    """Escapes literal $ characters by converting them to the HTML entity &#36; to prevent Streamlit from interpreting them as LaTeX."""
     if not text:
         return ""
-    import re
-    return re.sub(r'(?<!\\)\$', r'\$', text)
+    return text.replace("$", "&#36;")
 
 def get_cost_tiers(ltm_revenue, ltm_expenses, quarterly_operating_profit, margin_floor=0.25):
     """Calculates deterministic cost-tier thresholds from trailing financial data."""
@@ -249,7 +247,7 @@ with st.sidebar:
             extracted_val = st.session_state.get("extracted_cost")
             cost_extracted = st.session_state.get("cost_extracted_from_pdf", False)
             
-            # Compute dynamic benchmarks using trailing data cost tiers formula first
+            # Compute dynamic benchmarks using trailing data cost tiers formula
             ltm_revenue = int(df_kpis["Revenue"].sum())
             ltm_expenses = int(df_kpis["Expenses"].sum())
             last_row = df_kpis.iloc[-1]
@@ -259,12 +257,14 @@ with st.sidebar:
                 ltm_revenue, ltm_expenses, quarterly_operating_profit
             )
             
-            # Lower bound is 50,000 or lower to prevent clamping
+            # Lower bound is 50,000 or lower to prevent clamping the PDF stated cost
             min_slider = 50000
+            # Ensure the slider dynamically extends to cover all computed threshold boundaries (up to 1.3x reject_floor)
+            max_slider = max(int(max_rev * 1.2), (extracted_val * 2) if extracted_val else 1000000, int(reject_floor * 1.3))
             
-            # Anchor upper bound tightly above reject floor or qualitative cost (aligned to 1,000)
-            max_val_raw = max(reject_floor, extracted_val if extracted_val else 0)
-            max_slider = int((max_val_raw * 1.2) // 1000) * 1000
+            # Round slider bounds to nearest 10,000 for clean aesthetics
+            min_slider = (min_slider // 10000) * 10000
+            max_slider = ((max_slider + 9999) // 10000) * 10000
             
             # Use extracted cost from PDF if available, clamp to bounds
             if cost_extracted and extracted_val is not None:
@@ -273,9 +273,7 @@ with st.sidebar:
             else:
                 default_val = int(max_rev * 0.4)
                 default_slider = min(max_slider, max(min_slider, default_val))
-                default_slider = (default_slider // 1000) * 1000
                 slider_label = f"Estimated default entry cost (not in report): ${default_slider:,} — adjust to simulate alternative scenarios."
-                
         except Exception:
             min_slider, max_slider, default_slider = 50000, 1000000, 450000
             slider_label = "Entry Cost Parameter"
@@ -286,18 +284,35 @@ with st.sidebar:
         approve_ceiling, phased_ceiling, reject_floor = 507000.0, 700000.0, 855000.0
         
     region = st.session_state.get("active_region", "Southeast Asia")
-    sea_cost = st.slider(
+    
+    # Initialize cost_param in session state
+    if "cost_param" not in st.session_state:
+        st.session_state["cost_param"] = int(default_slider)
+        
+    # Reset cost_param if default_slider changes (e.g. due to uploading a new dataset)
+    if st.session_state.get("last_default_slider") != default_slider:
+        st.session_state["cost_param"] = int(default_slider)
+        st.session_state["last_default_slider"] = default_slider
+        
+    # Ensure current cost_param is clamped within the active slider bounds to prevent Streamlit layout exceptions
+    st.session_state["cost_param"] = min(max_slider, max(min_slider, st.session_state["cost_param"]))
+        
+    # Slider for entry cost adjustments
+    slider_cost = st.slider(
         slider_label,
         min_value=min_slider,
         max_value=max_slider,
-        value=default_slider,
-        step=1000,
+        value=st.session_state["cost_param"],
+        step=5000,
         format="$%d",
-        disabled=st.session_state.get("is_running", False)
+        disabled=st.session_state.get("is_running", False),
+        key="cost_slider_widget"
     )
-    
+    st.session_state["cost_param"] = slider_cost
+        
     # Determine cost origin message
-    slider_value = sea_cost
+    slider_value = st.session_state["cost_param"]
+    sea_cost = slider_value
     extracted_val = st.session_state.get("extracted_cost")
     cost_extracted = st.session_state.get("cost_extracted_from_pdf", False)
     
@@ -484,7 +499,8 @@ async def execute_debate(query: str, cost: int, region: str, cost_origin_message
                 "cost_origin_message": cost_origin_message,
                 "dry_run": dry_run_active,
                 "finance_db_path": st.session_state["finance_db_path"],
-                "marketing_pdf_path": st.session_state["marketing_pdf_path"]
+                "marketing_pdf_path": st.session_state["marketing_pdf_path"],
+                "kpis_csv_path": st.session_state.get("kpis_csv_path", DEFAULT_CSV_PATH)
             }
         ):
             if event.content:

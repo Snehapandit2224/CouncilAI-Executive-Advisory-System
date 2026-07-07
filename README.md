@@ -66,5 +66,18 @@ uv run streamlit run ui/app.py
 4. **Dry Run Simulation Mode**: An optional "Dry Run" checkbox in the sidebar allows you to run simulations instantly. The security plugin intercepts model calls and returns highly realistic mock responses keyed on cost and agent type, bypassing live Gemini API calls entirely for UI demo testing.
 5. **Session-Specific File Uploads**: Users can upload custom KPI CSVs (validating against the schema) and report PDFs directly in the "Data & Security Logs" tab. The system saves these files with unique session suffixes and programmatically compiles uploaded CSVs into custom SQLite DB instances. The coordinator injects these session-specific file paths directly into the agents' instructions to re-route their tool calls dynamically.
 6. **ADK Security Plugin**: Centrally validates input prompts (Input Guard), verifies tool execution permissions per agent (Permissions), and logs transactions to `data/audit.log` (Audit Log).
-7. **Rate Limiter & Quota Safeguards**: Automatically intercepts and retries Gemini API calls with exponential backoff if temporary spikes occur. Instantly raises descriptive warnings on the UI if a hard daily quota limit is hit, preventing timeouts.
-8. **Deterministic Cost-Tier Rules**: Evaluates Approve, Phased Launch, and Reject stances mathematically using trailing annual and quarterly operating profits derived from active CSV datasets, with high-resolution slider simulation down to $1,000 increments.
+7. **429 Rate Limiter**: Automatically intercepts and retries Gemini API calls with exponential backoff (1s, 2s, 4s, 8s) if a `RESOURCE_EXHAUSTED` or `UNAVAILABLE` limit is encountered.
+8. **Deterministic Cost-Tier Policy**: Cost-tier thresholds (Approve ceiling, Phased launch ceiling, Reject floor) are calculated locally in Python before any agent is invoked, using a trailing financial data formula. The boundaries and policy bucket classifications are passed to the agents as stated facts, ensuring 100% deterministic stances that are identical across repeated runs on the same data.
+
+## Dynamic vs. Fixed Dimensions
+
+| Dynamic Dimensions (Adapts per dataset) | Fixed Dimensions (Architectural Constants) |
+| :--- | :--- |
+| **Region & Target Market**: Parsed dynamically from qualitative PDF report context. | **CSV Schema Requirement**: Strict columns required for database compiling (`Quarter`, `Revenue`, `Expenses`, etc.). |
+| **Company & Initiative Name**: Extracted from loaded document texts. | **Margin Floor Policy**: 25% minimum target operating margin policy threshold. |
+| **Baseline Entry Cost**: Retrieved directly from stated PDF text. | **Approve Multiplier**: 15% (0.15) of annual trailing operating profit for low-risk Approve zone. |
+| **KPI Metrics & Trends**: Loaded from uploaded CSV sheets (LTV, CAC, Risk Score, Marketing Spend, Compliance Status). | **Agent Roles & Toolsets**: RBAC assignments (Finance has SQLite/Calc, Marketing has PDF/Filesystem, etc.). |
+| **Cost-Tier Thresholds**: Boundaries derived dynamically from the CSV trailing numbers. | **Debate Structure**: Genuine 2-Round sequential debate with 2.5s delay and 3-minute safeguard timeout. |
+| **Interactive Dashboard Charts**: Redraws line and bar plots based on loaded CSV periods. | **Security Rules**: Prompt injection sanitization, DB access restriction, and synthesizer least privilege. |
+
+

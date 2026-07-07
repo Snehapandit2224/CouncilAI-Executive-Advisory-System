@@ -113,3 +113,4 @@ venv.bak/
 # Project database
 data/*.db
 data/audit.log
+data/uploaded_*
